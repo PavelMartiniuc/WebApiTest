@@ -12,6 +12,8 @@ using WebApiTest.DomainObjects;
 using Microsoft.Extensions.Logging;
 using AutoMapper;
 using Microsoft.Extensions.Caching.Memory;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.IO;
 
 namespace WebApiTest
 {
@@ -22,6 +24,7 @@ namespace WebApiTest
         private readonly ILogger _logger;
         private readonly IMapper _mapper;
         private readonly IMemoryCache _cache;
+        private Dictionary<string, CacheItem> _cacheItems;
 
         public CompanyApiClient(AppConfiguration config, ILogger logger, IMapper mapper, IMemoryCache cache)
         {
@@ -30,6 +33,7 @@ namespace WebApiTest
             _logger = logger;
             _cache = cache;
             _client = new HttpClient();
+            _cacheItems = new Dictionary<string, CacheItem>();
             Init(_client);
         }
 
@@ -107,6 +111,33 @@ namespace WebApiTest
             var cacheEntryOptions = new MemoryCacheEntryOptions()
                 .SetSlidingExpiration(TimeSpan.FromSeconds(_config.CacheTimeoutSecs));
             _cache.Set(key, value, cacheEntryOptions);
+            var cacheType = CacheType.Campany;            
+            if (typeof(T) == typeof(Company))
+                cacheType = CacheType.Campany;
+            if (typeof(T) == typeof(List<Company>))
+                cacheType = CacheType.Companies;
+            if (typeof(T) == typeof(List<Officer>))
+                cacheType = CacheType.Officers;
+
+            _cacheItems[key] = new CacheItem
+            {
+                Key = key,
+                Type = cacheType,
+                JsonData = JsonConvert.SerializeObject(value)
+            };
+            //try
+            //{
+            //    var formatter = new BinaryFormatter();
+            //    var stream = new FileStream("CacheData.txt", FileMode.Create, FileAccess.Write);
+            //    #pragma warning disable SYSLIB0011
+            //    formatter.Serialize(stream, _cacheItems);
+            //    #pragma warning restore SYSLIB0011
+            //    stream.Close();
+            //}
+            //catch(Exception ex)
+            //{
+
+            //}
         }
 
         private async Task<T> ProcessResult<T>(HttpResponseMessage response)
