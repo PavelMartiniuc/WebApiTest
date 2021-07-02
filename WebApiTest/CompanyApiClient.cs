@@ -11,6 +11,7 @@ using WebApiTest.Dto;
 using WebApiTest.DomainObjects;
 using Microsoft.Extensions.Logging;
 using AutoMapper;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace WebApiTest
 {
@@ -20,12 +21,14 @@ namespace WebApiTest
         private readonly AppConfiguration _config;
         private readonly ILogger _logger;
         private readonly IMapper _mapper;
+        private readonly IMemoryCache _cache;
 
-        public CompanyApiClient(AppConfiguration config, ILogger logger, IMapper mapper)
+        public CompanyApiClient(AppConfiguration config, ILogger logger, IMapper mapper, IMemoryCache cache)
         {
             _config = config;
             _mapper = mapper;
             _logger = logger;
+            _cache = cache;
             _client = new HttpClient();
             Init(_client);
         }
@@ -45,32 +48,65 @@ namespace WebApiTest
         public async Task<IEnumerable<CompanyDto>> GetCompaniesAsync(string companyName)
         {
             string _requestUrl = $"search/companies?q={Uri.EscapeDataString(companyName)}&{GetIntervalString()}";
-            HttpResponseMessage response = await _client.GetAsync(_requestUrl);
-            var result = await ProcessResult<CollectionResult<Company>>(response);
-            var companies = result.Items;
+            _logger.LogInformation($"Perform call to {_requestUrl}");
+            var companies = GetFromCache<List<Company>>(_requestUrl);
+            if (companies == null)
+            {
+                HttpResponseMessage response = await _client.GetAsync(_requestUrl);
+                var result = await ProcessResult<CollectionResult<Company>>(response);
+                companies = result.Items;
+                SaveInCache(_requestUrl, companies);
+            }
             return _mapper.Map<List<CompanyDto>>(companies);
         }
 
         public async Task<CompanyDto> GetCompanyAsync(string companyNumber)
         {
             string _requestUrl = $"company/{companyNumber}";
-            HttpResponseMessage response = await _client.GetAsync(_requestUrl);
-            var company = await ProcessResult<CompanyDetails>(response);
+            _logger.LogInformation($"Perform call to {_requestUrl}");
+            var company = GetFromCache<CompanyDetails>(_requestUrl);
+            if (company == null)
+            {
+                HttpResponseMessage response = await _client.GetAsync(_requestUrl);
+                company = await ProcessResult<CompanyDetails>(response);
+                SaveInCache(_requestUrl, company);
+            }
             return _mapper.Map<CompanyDto>(company);
         }
 
         public async Task<IEnumerable<OfficerDto>> GetCompanyOfficersAsync(string companyNumber)
         {
             string _requestUrl = $"company/{companyNumber}/officers?{GetIntervalString()}";
-            HttpResponseMessage response = await _client.GetAsync(_requestUrl);
-            var result = await ProcessResult<CollectionResult<Officer>>(response);
-            var officers = result.Items;
+            _logger.LogInformation($"Perform call to {_requestUrl}");
+            var officers = GetFromCache<List<Officer>>(_requestUrl);
+            if (officers == null)
+            {
+                HttpResponseMessage response = await _client.GetAsync(_requestUrl);
+                var result = await ProcessResult<CollectionResult<Officer>>(response);
+                officers = result.Items;
+                SaveInCache(_requestUrl, officers);
+            }
             return _mapper.Map<List<OfficerDto>>(officers);
         }
 
         private string GetIntervalString()
         {
             return $"start_index=1&items_per_page={_config.NumberOfResults}";
+        }
+
+        private T GetFromCache<T>(string key)
+        {
+            T cacheEntry;
+            if (_cache.TryGetValue<T>(key, out cacheEntry))
+                return cacheEntry;
+            return default(T);
+        }
+
+        private void SaveInCache<T>(string key, T value)
+        {
+            var cacheEntryOptions = new MemoryCacheEntryOptions()
+                .SetSlidingExpiration(TimeSpan.FromSeconds(_config.CacheTimeoutSecs));
+            _cache.Set(key, value, cacheEntryOptions);
         }
 
         private async Task<T> ProcessResult<T>(HttpResponseMessage response)
@@ -86,11 +122,12 @@ namespace WebApiTest
                 catch (Exception ex)
                 {
                     _logger.LogError(ex.Message);
-                    throw new ClientErrorResponse(response.StatusCode, "Error parsing reposne");
+                    throw new ClientErrorResponse(response.StatusCode, "Error parsing API response");
                 }
             }
-
-            throw new ClientErrorResponse(response.StatusCode, responseBody);
+            string error = "Not OK response form API";
+            _logger.LogWarning($"{error}: {responseBody}");
+            throw new ClientErrorResponse(response.StatusCode, error);
         }
     }
 }

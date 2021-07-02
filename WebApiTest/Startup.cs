@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -10,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using WebApiTest.Common;
 using WebApiTest.Common.Configuration;
 
 namespace WebApiTest
@@ -27,8 +29,10 @@ namespace WebApiTest
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+            services.AddMemoryCache();
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
             services.Configure<AppConfiguration>(Configuration.GetSection("AppConfiguration"));
+            services.AddControllersWithViews(options => options.Filters.Add(new ApiResponseExceptionFilter()));
 
             //services.AddControllersWithViews(options =>
             //{

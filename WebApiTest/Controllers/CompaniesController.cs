@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Generic;
@@ -18,13 +19,16 @@ namespace WebApiTest.Controllers
         private readonly AppConfiguration _config;
         private readonly CompanyApiClient _client;
         private readonly IMapper _mapper;
+        private readonly IMemoryCache _cache;
 
-        public CompaniesController(ILogger<CompaniesController> logger, IOptions<AppConfiguration> config, IMapper mapper)
+        public CompaniesController(ILogger<CompaniesController> logger, IOptions<AppConfiguration> config, IMapper mapper,
+                                   IMemoryCache cache)
         {
             _logger = logger;
             _config = config.Value;
             _mapper = mapper;
-            _client = new CompanyApiClient(_config, _logger, _mapper);
+            _cache = cache;
+            _client = new CompanyApiClient(_config, _logger, _mapper, _cache);
         }
 
         [HttpGet("companies/{companyName}")]

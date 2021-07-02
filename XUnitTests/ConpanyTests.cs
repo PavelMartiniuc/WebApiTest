@@ -63,5 +63,17 @@ namespace WebApiTests.Tests
             response.EnsureSuccessStatusCode();
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
+
+        [Theory]
+        [InlineData("GET")]
+        public async Task TestGetCompanyOfficersNotFound(string method)
+        {
+            // arrange
+            var request = new HttpRequestMessage(new HttpMethod(method), "api/companies/bynumber/11304870/officers");
+            // act
+            var response = await _client.SendAsync(request);
+            //assert
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
     }
 }

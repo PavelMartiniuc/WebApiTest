@@ -24,4 +24,3 @@ D:\VsStudioProjects\MyApiTest\WebApiTest\WebApiTest\obj\Debug\net5.0\WebApiTest.
 D:\VsStudioProjects\MyApiTest\WebApiTest\WebApiTest\obj\Debug\net5.0\ref\WebApiTest.dll
 D:\VsStudioProjects\MyApiTest\WebApiTest\WebApiTest\obj\Debug\net5.0\WebApiTest.pdb
 D:\VsStudioProjects\MyApiTest\WebApiTest\WebApiTest\obj\Debug\net5.0\WebApiTest.genruntimeconfig.cache
-D:\VsStudioProjects\MyApiTest\WebApiTest\WebApiTest\obj\Debug\net5.0\WebApiTest.csproj.AssemblyReference.cache
